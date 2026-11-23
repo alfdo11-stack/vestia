@@ -1,1 +1,11 @@
-{"name":"Vestia","short_name":"Vestia","start_url":"./index.html","display":"standalone","background_color":"#f7f4ee","theme_color":"#f7f4ee","icons":[]}
+{
+  "name": "Vestia",
+  "short_name": "Vestia",
+  "description": "Tu armario inteligente y recomendador personal de outfits.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f4ee",
+  "theme_color": "#f7f4ee",
+  "lang": "es"
+}
