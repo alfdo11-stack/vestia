@@ -1,5 +1,11 @@
+/* ==========================================
+   VESTIA v0.2
+   Recomendador local de outfits
+========================================== */
+
 const KEY = "vestia-items-v1";
 const FAV = "vestia-favs-v1";
+const FEEDBACK = "vestia-feedback-v1";
 
 let page = "home";
 
@@ -13,27 +19,27 @@ function favs() {
   return JSON.parse(localStorage.getItem(FAV) || "[]");
 }
 
-function save(data) {
+function feedback() {
+  return JSON.parse(localStorage.getItem(FEEDBACK) || "[]");
+}
+
+function saveItems(data) {
   localStorage.setItem(KEY, JSON.stringify(data));
 }
 
 function esc(text) {
-  return String(text || "").replace(/[&<>"']/g, (character) => {
-    const entities = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    };
-
-    return entities[character];
-  });
+  return String(text || "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[char]));
 }
 
-/* =========================
+/* ==========================================
    NAVEGACIÓN
-========================= */
+========================================== */
 
 function nav() {
   const options = [
@@ -46,7 +52,7 @@ function nav() {
   return `
     <div class="nav">
       <div class="navin">
-        ${options.map((option) => `
+        ${options.map(option => `
           <button
             data-page="${option[0]}"
             class="${page === option[0] ? "active" : ""}"
@@ -61,21 +67,12 @@ function nav() {
 }
 
 function layout(content) {
-  const app = $("#app");
-
-  if (!app) {
-    console.error("Vestia: no se encontró #app");
-    return;
-  }
-
-  app.innerHTML = `
-    <main class="shell">
-      ${content}
-    </main>
+  $("#app").innerHTML = `
+    <main class="shell">${content}</main>
     ${nav()}
   `;
 
-  document.querySelectorAll("[data-page]").forEach((button) => {
+  document.querySelectorAll("[data-page]").forEach(button => {
     button.onclick = () => {
       page = button.dataset.page;
       render();
@@ -83,19 +80,19 @@ function layout(content) {
   });
 }
 
-/* =========================
+/* ==========================================
    INICIO
-========================= */
+========================================== */
 
 function home() {
-  const wardrobeItems = items();
+  const clothes = items();
 
   layout(`
     <div class="brand">Vestia</div>
     <div class="tag">Tu armario. Mejor combinado.</div>
 
     <section class="hero">
-      <span class="chip">Armario inteligente</span>
+      <span class="chip">Vestia v0.2</span>
 
       <h1>
         Vestirte bien,<br>
@@ -103,18 +100,18 @@ function home() {
       </h1>
 
       <p>
-        Guarda tus prendas y deja que Vestia encuentre
-        combinaciones para cada ocasión.
+        Combina tus prendas según colores, estilo
+        y la ocasión para la que te estás vistiendo.
       </p>
 
       <button class="btn" id="create">
-        Crear mi outfit
+        ✦ Crear mi outfit
       </button>
     </section>
 
     <div class="grid">
       <div class="card">
-        <div class="stat">${wardrobeItems.length}</div>
+        <div class="stat">${clothes.length}</div>
         <div class="label">prendas guardadas</div>
       </div>
 
@@ -124,14 +121,14 @@ function home() {
       </div>
     </div>
 
-    <h3 class="sectiontitle">Empieza aquí</h3>
+    <h3 class="sectiontitle">Tu armario</h3>
 
     <div class="card">
       <strong>Agrega tu ropa</strong>
 
       <p class="hint">
-        Toma una foto de cada prenda.
-        Vestia la guardará únicamente en este dispositivo.
+        Mientras más prendas registres, más combinaciones
+        diferentes podrá encontrar Vestia.
       </p>
 
       <button class="btn alt" id="add">
@@ -148,12 +145,12 @@ function home() {
   $("#add").onclick = addForm;
 }
 
-/* =========================
+/* ==========================================
    ARMARIO
-========================= */
+========================================== */
 
 function wardrobe() {
-  const wardrobeItems = items();
+  const clothes = items();
 
   let content = `
     <div class="top">
@@ -169,18 +166,30 @@ function wardrobe() {
     </div>
   `;
 
-  if (wardrobeItems.length) {
+  if (clothes.length) {
     content += `
       <div class="wardrobe">
-        ${wardrobeItems.map((item) => `
+
+        ${clothes.map(item => `
           <div class="item">
-            <img src="${item.photo}" alt="${esc(item.name)}">
+
+            <img
+              src="${item.photo}"
+              alt="${esc(item.name)}"
+            >
 
             <div class="meta">
-              <strong>${esc(item.name)}</strong>
+
+              <strong>
+                ${esc(item.name)}
+              </strong>
 
               <small>
-                ${esc(item.type)} · ${esc(item.color)}
+                ${esc(item.type)}
+                ·
+                ${esc(item.color)}
+                ·
+                ${esc(item.style)}
               </small>
 
               <button
@@ -194,17 +203,23 @@ function wardrobe() {
               >
                 Eliminar
               </button>
+
             </div>
           </div>
         `).join("")}
+
       </div>
     `;
   } else {
     content += `
       <div class="empty">
         <div style="font-size:42px">♢</div>
+
         <h3>Tu armario está vacío</h3>
-        <p>Agrega tus primeras prendas para crear outfits.</p>
+
+        <p>
+          Agrega tus primeras prendas para crear outfits.
+        </p>
       </div>
     `;
   }
@@ -213,35 +228,45 @@ function wardrobe() {
 
   $("#add").onclick = addForm;
 
-  document.querySelectorAll("[data-del]").forEach((button) => {
+  document.querySelectorAll("[data-del]").forEach(button => {
     button.onclick = () => {
-      const updatedItems = items().filter(
-        (item) => String(item.id) !== String(button.dataset.del)
+
+      const updated = items().filter(
+        item =>
+          String(item.id) !==
+          String(button.dataset.del)
       );
 
-      save(updatedItems);
+      saveItems(updated);
       wardrobe();
     };
   });
 }
 
-/* =========================
+/* ==========================================
    AGREGAR PRENDA
-========================= */
+========================================== */
 
 function addForm() {
+
   const colors = [
     "Negro",
     "Blanco",
     "Gris",
     "Azul",
+    "Azul marino",
     "Beige",
+    "Caqui",
+    "Crema",
     "Café",
+    "Vino / Burdeos",
     "Verde",
+    "Verde olivo",
     "Rojo",
     "Rosa",
     "Morado",
     "Amarillo",
+    "Naranja",
     "Otro"
   ];
 
@@ -251,11 +276,18 @@ function addForm() {
     </div>
 
     <div class="card">
-      <img id="preview" class="preview">
+
+      <img
+        id="preview"
+        class="preview"
+      >
 
       <label class="photo">
         📷<br>
-        <b>Tomar o elegir foto</b>
+
+        <b>
+          Tomar o elegir foto
+        </b>
 
         <input
           id="photo"
@@ -265,37 +297,61 @@ function addForm() {
         >
       </label>
 
-      <label>Nombre</label>
+      <label>
+        Nombre
+      </label>
+
       <input
         id="name"
-        placeholder="Ej. Camisa blanca"
+        placeholder="Ej. Playera vino"
       >
 
-      <label>Tipo de prenda</label>
+      <label>
+        Tipo de prenda
+      </label>
 
       <select id="type">
-        <option>Camisa</option>
-        <option>Playera</option>
-        <option>Polo</option>
-        <option>Suéter</option>
-        <option>Chamarra</option>
-        <option>Pantalón</option>
-        <option>Jeans</option>
-        <option>Short</option>
-        <option>Tenis</option>
-        <option>Zapatos</option>
-        <option>Botas</option>
+
+        <optgroup label="Parte superior">
+          <option>Camisa</option>
+          <option>Playera</option>
+          <option>Polo</option>
+          <option>Suéter</option>
+        </optgroup>
+
+        <optgroup label="Prenda exterior">
+          <option>Chamarra</option>
+          <option>Saco</option>
+          <option>Abrigo</option>
+        </optgroup>
+
+        <optgroup label="Parte inferior">
+          <option>Pantalón</option>
+          <option>Jeans</option>
+          <option>Short</option>
+        </optgroup>
+
+        <optgroup label="Calzado">
+          <option>Tenis</option>
+          <option>Zapatos</option>
+          <option>Botas</option>
+        </optgroup>
+
       </select>
 
-      <label>Color</label>
+      <label>
+        Color principal
+      </label>
 
       <select id="color">
-        ${colors.map((color) => `
-          <option>${color}</option>
-        `).join("")}
+        ${colors.map(color =>
+          `<option>${color}</option>`
+        ).join("")}
       </select>
 
-      <label>Estilo</label>
+      <label>
+        Estilo
+      </label>
 
       <select id="style">
         <option>Casual</option>
@@ -304,65 +360,87 @@ function addForm() {
         <option>Deportivo</option>
       </select>
 
-      <button class="btn" id="save">
+      <button
+        class="btn"
+        id="save"
+      >
         Guardar prenda
       </button>
 
-      <button class="btn alt" id="cancel">
+      <button
+        class="btn alt"
+        id="cancel"
+      >
         Cancelar
       </button>
+
     </div>
   `);
 
   let imageData = "";
 
-  $("#photo").onchange = (event) => {
-    const file = event.target.files[0];
+  $("#photo").onchange = event => {
 
-    if (!file) {
-      return;
-    }
+    const file =
+      event.target.files[0];
 
-    const reader = new FileReader();
+    if (!file) return;
+
+    const reader =
+      new FileReader();
 
     reader.onload = () => {
-      imageData = reader.result;
 
-      $("#preview").src = imageData;
-      $("#preview").style.display = "block";
+      imageData =
+        reader.result;
+
+      $("#preview").src =
+        imageData;
+
+      $("#preview").style.display =
+        "block";
     };
 
     reader.readAsDataURL(file);
   };
 
   $("#save").onclick = () => {
-    const name = $("#name").value.trim();
+
+    const name =
+      $("#name").value.trim();
 
     if (!imageData || !name) {
-      alert("Agrega una foto y un nombre.");
+      alert(
+        "Agrega una foto y un nombre."
+      );
+
       return;
     }
 
-    const wardrobeItems = items();
+    const clothes = items();
 
-    wardrobeItems.push({
+    clothes.push({
       id: Date.now(),
       photo: imageData,
-      name: name,
+      name,
       type: $("#type").value,
       color: $("#color").value,
       style: $("#style").value
     });
 
     try {
-      save(wardrobeItems);
+
+      saveItems(clothes);
 
       page = "wardrobe";
+
       render();
+
     } catch (error) {
+
       alert(
-        "El almacenamiento del navegador está lleno. " +
-        "Prueba con una foto de menor tamaño."
+        "No hay suficiente espacio. " +
+        "Prueba con una fotografía más pequeña."
       );
     }
   };
@@ -373,16 +451,21 @@ function addForm() {
   };
 }
 
-/* =========================
-   MOTOR DE OUTFITS
-========================= */
+/* ==========================================
+   CLASIFICACIÓN DE PRENDAS
+========================================== */
 
 const topTypes = [
   "Camisa",
   "Playera",
   "Polo",
-  "Suéter",
-  "Chamarra"
+  "Suéter"
+];
+
+const outerTypes = [
+  "Chamarra",
+  "Saco",
+  "Abrigo"
 ];
 
 const bottomTypes = [
@@ -397,103 +480,510 @@ const shoeTypes = [
   "Botas"
 ];
 
-function score(top, bottom, shoe, style) {
-  let points = 65;
+/* ==========================================
+   COMPATIBILIDAD DE COLOR
+========================================== */
 
-  [top, bottom, shoe].forEach((item) => {
-    if (item.style === style) {
-      points += 7;
-    }
-  });
+const neutralColors = [
+  "Negro",
+  "Blanco",
+  "Gris",
+  "Beige",
+  "Crema",
+  "Caqui"
+];
 
-  const colors = [
-    top.color,
-    bottom.color,
-    shoe.color
-  ];
+const colorFriends = {
 
-  const neutralColors = [
+  "Negro": [
     "Blanco",
+    "Gris",
+    "Beige",
+    "Crema",
+    "Azul",
+    "Azul marino",
+    "Vino / Burdeos",
+    "Verde olivo"
+  ],
+
+  "Blanco": [
     "Negro",
     "Gris",
-    "Beige"
-  ];
+    "Azul",
+    "Azul marino",
+    "Beige",
+    "Caqui",
+    "Café",
+    "Vino / Burdeos",
+    "Verde",
+    "Verde olivo",
+    "Rojo"
+  ],
+
+  "Gris": [
+    "Negro",
+    "Blanco",
+    "Azul",
+    "Azul marino",
+    "Vino / Burdeos",
+    "Rosa",
+    "Verde olivo"
+  ],
+
+  "Azul": [
+    "Blanco",
+    "Gris",
+    "Beige",
+    "Caqui",
+    "Crema",
+    "Café"
+  ],
+
+  "Azul marino": [
+    "Blanco",
+    "Gris",
+    "Beige",
+    "Caqui",
+    "Crema",
+    "Café",
+    "Vino / Burdeos",
+    "Verde olivo"
+  ],
+
+  "Beige": [
+    "Negro",
+    "Blanco",
+    "Azul",
+    "Azul marino",
+    "Café",
+    "Vino / Burdeos",
+    "Verde olivo"
+  ],
+
+  "Caqui": [
+    "Blanco",
+    "Azul",
+    "Azul marino",
+    "Negro",
+    "Vino / Burdeos",
+    "Verde olivo"
+  ],
+
+  "Crema": [
+    "Negro",
+    "Azul",
+    "Azul marino",
+    "Café",
+    "Vino / Burdeos",
+    "Verde olivo"
+  ],
+
+  "Café": [
+    "Blanco",
+    "Beige",
+    "Crema",
+    "Azul",
+    "Azul marino",
+    "Verde olivo"
+  ],
+
+  "Vino / Burdeos": [
+    "Negro",
+    "Blanco",
+    "Gris",
+    "Beige",
+    "Caqui",
+    "Crema",
+    "Azul marino"
+  ],
+
+  "Verde olivo": [
+    "Negro",
+    "Blanco",
+    "Beige",
+    "Caqui",
+    "Crema",
+    "Café",
+    "Azul marino"
+  ]
+};
+
+function colorsMatch(a, b) {
+
+  if (a === b) {
+    return 4;
+  }
 
   if (
-    colors.some((color) =>
-      neutralColors.includes(color)
-    )
+    neutralColors.includes(a) ||
+    neutralColors.includes(b)
   ) {
-    points += 8;
+    return 7;
   }
 
-  if (new Set(colors).size <= 2) {
-    points += 6;
+  if (
+    colorFriends[a] &&
+    colorFriends[a].includes(b)
+  ) {
+    return 10;
   }
 
-  return Math.min(99, points);
+  if (
+    colorFriends[b] &&
+    colorFriends[b].includes(a)
+  ) {
+    return 10;
+  }
+
+  return 1;
 }
 
-function recommend(style) {
-  const wardrobeItems = items();
+/* ==========================================
+   FORMALIDAD
+========================================== */
 
-  const tops = wardrobeItems.filter((item) =>
-    topTypes.includes(item.type)
-  );
+const styleLevel = {
+  "Deportivo": 0,
+  "Casual": 1,
+  "Smart casual": 2,
+  "Formal": 3
+};
 
-  const bottoms = wardrobeItems.filter((item) =>
-    bottomTypes.includes(item.type)
-  );
+function styleCompatibility(
+  itemStyle,
+  requestedStyle
+) {
 
-  const shoes = wardrobeItems.filter((item) =>
-    shoeTypes.includes(item.type)
-  );
+  const difference =
+    Math.abs(
+      styleLevel[itemStyle] -
+      styleLevel[requestedStyle]
+    );
+
+  if (difference === 0) return 12;
+  if (difference === 1) return 5;
+
+  return -5;
+}
+
+/* ==========================================
+   OCASIÓN
+========================================== */
+
+function occasionScore(
+  outfit,
+  occasion
+) {
+
+  let points = 0;
+
+  const styles =
+    outfit.map(item => item.style);
+
+  const types =
+    outfit.map(item => item.type);
+
+  if (occasion === "Trabajo") {
+
+    if (
+      styles.includes("Formal") ||
+      styles.includes("Smart casual")
+    ) {
+      points += 10;
+    }
+
+    if (
+      types.includes("Camisa") ||
+      types.includes("Polo")
+    ) {
+      points += 5;
+    }
+  }
+
+  if (occasion === "Cita") {
+
+    if (
+      styles.includes("Smart casual")
+    ) {
+      points += 8;
+    }
+
+    if (
+      types.includes("Camisa") ||
+      types.includes("Polo")
+    ) {
+      points += 4;
+    }
+  }
+
+  if (
+    occasion === "Salida con amigos"
+  ) {
+
+    if (
+      styles.includes("Casual")
+    ) {
+      points += 8;
+    }
+  }
+
+  if (occasion === "Evento") {
+
+    if (
+      styles.includes("Formal")
+    ) {
+      points += 12;
+    }
+
+    if (
+      types.includes("Zapatos")
+    ) {
+      points += 6;
+    }
+  }
+
+  return points;
+}
+
+/* ==========================================
+   PUNTUACIÓN DEL OUTFIT
+========================================== */
+
+function outfitScore(
+  pieces,
+  requestedStyle,
+  occasion
+) {
+
+  let points = 40;
+
+  pieces.forEach(item => {
+
+    points +=
+      styleCompatibility(
+        item.style,
+        requestedStyle
+      );
+  });
+
+  for (
+    let i = 0;
+    i < pieces.length;
+    i++
+  ) {
+
+    for (
+      let j = i + 1;
+      j < pieces.length;
+      j++
+    ) {
+
+      points += colorsMatch(
+        pieces[i].color,
+        pieces[j].color
+      );
+    }
+  }
+
+  points +=
+    occasionScore(
+      pieces,
+      occasion
+    );
+
+  return points;
+}
+
+/* ==========================================
+   EXPLICACIÓN
+========================================== */
+
+function explain(
+  pieces,
+  style,
+  occasion
+) {
+
+  const colors =
+    pieces.map(item => item.color);
+
+  const neutral =
+    colors.some(color =>
+      neutralColors.includes(color)
+    );
+
+  let explanation =
+    `Esta combinación funciona para ${occasion.toLowerCase()} `;
+
+  if (neutral) {
+
+    explanation +=
+      "porque utiliza tonos neutros que equilibran el conjunto. ";
+
+  } else {
+
+    explanation +=
+      "porque mantiene una relación equilibrada entre sus colores. ";
+  }
+
+  explanation +=
+    `Además, las prendas se acercan al estilo ${style.toLowerCase()} que seleccionaste.`;
+
+  return explanation;
+}
+
+function rating(score) {
+
+  if (score >= 100) {
+    return "Excelente combinación";
+  }
+
+  if (score >= 85) {
+    return "Muy buena combinación";
+  }
+
+  if (score >= 70) {
+    return "Buena combinación";
+  }
+
+  return "Combinación diferente";
+}
+
+/* ==========================================
+   GENERAR RECOMENDACIONES
+========================================== */
+
+function recommendations(
+  requestedStyle,
+  occasion
+) {
+
+  const clothes = items();
+
+  const tops =
+    clothes.filter(item =>
+      topTypes.includes(item.type)
+    );
+
+  const bottoms =
+    clothes.filter(item =>
+      bottomTypes.includes(item.type)
+    );
+
+  const shoes =
+    clothes.filter(item =>
+      shoeTypes.includes(item.type)
+    );
+
+  const outers =
+    clothes.filter(item =>
+      outerTypes.includes(item.type)
+    );
 
   if (
     !tops.length ||
     !bottoms.length ||
     !shoes.length
   ) {
-    return null;
+    return [];
   }
 
   const combinations = [];
 
-  tops.forEach((top) => {
-    bottoms.forEach((bottom) => {
-      shoes.forEach((shoe) => {
+  tops.forEach(top => {
+
+    bottoms.forEach(bottom => {
+
+      shoes.forEach(shoe => {
+
+        const basicPieces = [
+          top,
+          bottom,
+          shoe
+        ];
+
         combinations.push({
-          pieces: [top, bottom, shoe],
-          score: score(
+          pieces: basicPieces,
+          score: outfitScore(
+            basicPieces,
+            requestedStyle,
+            occasion
+          )
+        });
+
+        outers.forEach(outer => {
+
+          const layeredPieces = [
             top,
             bottom,
             shoe,
-            style
-          )
+            outer
+          ];
+
+          combinations.push({
+            pieces: layeredPieces,
+            score: outfitScore(
+              layeredPieces,
+              requestedStyle,
+              occasion
+            )
+          });
+
         });
       });
     });
   });
 
   combinations.sort(
-    (a, b) => b.score - a.score
+    (a, b) =>
+      b.score - a.score
   );
 
-  return combinations[0];
+  /* Evita mostrar exactamente
+     las mismas piezas repetidas */
+
+  const unique = [];
+
+  const signatures =
+    new Set();
+
+  combinations.forEach(combo => {
+
+    const signature =
+      combo.pieces
+        .map(item => item.id)
+        .sort()
+        .join("-");
+
+    if (
+      !signatures.has(signature)
+    ) {
+
+      signatures.add(signature);
+
+      unique.push(combo);
+    }
+  });
+
+  return unique.slice(0, 3);
 }
 
-/* =========================
-   CREAR OUTFIT
-========================= */
+/* ==========================================
+   PANTALLA OUTFIT
+========================================== */
 
 function outfit() {
+
   layout(`
     <div class="top">
-      <h2>Crear outfit</h2>
+      <h2>¿Qué me pongo?</h2>
     </div>
 
     <div class="card">
-      <label>¿Para qué ocasión?</label>
+
+      <label>
+        ¿Para qué ocasión?
+      </label>
 
       <select id="occasion">
         <option>Un día normal</option>
@@ -503,7 +993,9 @@ function outfit() {
         <option>Evento</option>
       </select>
 
-      <label>¿Qué estilo buscas?</label>
+      <label>
+        ¿Qué estilo buscas?
+      </label>
 
       <select id="ostyle">
         <option>Casual</option>
@@ -512,108 +1004,273 @@ function outfit() {
         <option>Deportivo</option>
       </select>
 
-      <button class="btn" id="go">
-        ✦ Recomendarme algo
+      <button
+        class="btn"
+        id="go"
+      >
+        ✦ Crear mis outfits
       </button>
+
     </div>
 
     <div id="result"></div>
   `);
 
   $("#go").onclick = () => {
-    const selectedStyle = $("#ostyle").value;
-    const recommendation = recommend(selectedStyle);
-    const result = $("#result");
 
-    if (!recommendation) {
-      result.innerHTML = `
+    const style =
+      $("#ostyle").value;
+
+    const occasion =
+      $("#occasion").value;
+
+    const results =
+      recommendations(
+        style,
+        occasion
+      );
+
+    const resultBox =
+      $("#result");
+
+    if (!results.length) {
+
+      resultBox.innerHTML = `
         <div class="card">
-          <strong>Aún faltan prendas</strong>
+
+          <strong>
+            Aún faltan prendas
+          </strong>
 
           <p class="hint">
-            Para recomendar un outfit necesito al menos:
-            una prenda superior, un pantalón/jeans/short
-            y un par de zapatos, tenis o botas.
+            Necesito al menos una prenda superior,
+            una parte inferior y un par de zapatos,
+            tenis o botas.
           </p>
+
         </div>
       `;
 
       return;
     }
 
-    const outfitId = recommendation.pieces
-      .map((item) => item.id)
-      .join("-");
+    const titles = [
+      "★ Mi mejor opción",
+      "Alternativa",
+      "Algo diferente"
+    ];
 
-    result.innerHTML = `
-      <div class="card">
-        <span class="score">
-          ${recommendation.score}% compatible
-        </span>
+    resultBox.innerHTML =
+      results.map(
+        (result, index) => {
 
-        <h3>Mi recomendación</h3>
+          const id =
+            result.pieces
+              .map(item => item.id)
+              .join("-");
 
-        <div class="outfit">
-          ${recommendation.pieces.map((item) => `
-            <img
-              src="${item.photo}"
-              title="${esc(item.name)}"
-              alt="${esc(item.name)}"
-            >
-          `).join("")}
-        </div>
+          return `
+            <div class="card">
 
-        ${recommendation.pieces.map((item) => `
-          <span class="chip">
-            ${esc(item.name)}
-          </span>
-        `).join("")}
+              <span class="score">
+                ${rating(result.score)}
+              </span>
 
-        <p class="hint">
-          Elegí esta combinación considerando el estilo
-          seleccionado y una mezcla equilibrada de colores.
-        </p>
+              <h3>
+                ${titles[index]}
+              </h3>
 
-        <button class="btn alt" id="fav">
-          ♡ Guardar outfit
-        </button>
-      </div>
-    `;
+              <div class="outfit">
 
-    $("#fav").onclick = () => {
-      const favoriteOutfits = favs();
+                ${result.pieces.map(item => `
+                  <img
+                    src="${item.photo}"
+                    title="${esc(item.name)}"
+                    alt="${esc(item.name)}"
+                  >
+                `).join("")}
 
-      const alreadySaved = favoriteOutfits.some(
-        (favorite) => favorite.id === outfitId
-      );
+              </div>
 
-      if (!alreadySaved) {
-        favoriteOutfits.push({
-          id: outfitId,
-          date: new Date().toLocaleDateString("es-MX"),
-          occasion: $("#occasion").value,
-          style: $("#ostyle").value,
-          pieces: recommendation.pieces,
-          score: recommendation.score
-        });
+              <div style="margin-top:10px">
 
-        localStorage.setItem(
-          FAV,
-          JSON.stringify(favoriteOutfits)
-        );
-      }
+                ${result.pieces.map(item => `
+                  <span class="chip">
+                    ${esc(item.name)}
+                  </span>
+                `).join("")}
 
-      $("#fav").textContent = "♥ Guardado";
-    };
+              </div>
+
+              <p class="hint">
+                ${explain(
+                  result.pieces,
+                  style,
+                  occasion
+                )}
+              </p>
+
+              <div
+                style="
+                  display:grid;
+                  grid-template-columns:1fr 1fr;
+                  gap:8px;
+                "
+              >
+
+                <button
+                  class="btn alt"
+                  data-like="${id}"
+                >
+                  👍 Me gusta
+                </button>
+
+                <button
+                  class="btn alt"
+                  data-dislike="${id}"
+                >
+                  👎 No me gusta
+                </button>
+
+              </div>
+
+              <button
+                class="btn alt"
+                data-fav="${id}"
+                style="margin-top:8px"
+              >
+                ♡ Guardar outfit
+              </button>
+
+            </div>
+          `;
+        }
+      ).join("");
+
+    /* Feedback */
+
+    document
+      .querySelectorAll("[data-like]")
+      .forEach(button => {
+
+        button.onclick = () => {
+
+          saveFeedback(
+            button.dataset.like,
+            "like"
+          );
+
+          button.textContent =
+            "✓ Me gusta";
+        };
+      });
+
+    document
+      .querySelectorAll("[data-dislike]")
+      .forEach(button => {
+
+        button.onclick = () => {
+
+          saveFeedback(
+            button.dataset.dislike,
+            "dislike"
+          );
+
+          button.textContent =
+            "✓ Registrado";
+        };
+      });
+
+    /* Favoritos */
+
+    document
+      .querySelectorAll("[data-fav]")
+      .forEach(button => {
+
+        button.onclick = () => {
+
+          const id =
+            button.dataset.fav;
+
+          const result =
+            results.find(r =>
+              r.pieces
+                .map(item => item.id)
+                .join("-") === id
+            );
+
+          if (!result) return;
+
+          const favorites =
+            favs();
+
+          if (
+            !favorites.some(
+              favorite =>
+                favorite.id === id
+            )
+          ) {
+
+            favorites.push({
+              id,
+              date:
+                new Date()
+                  .toLocaleDateString(
+                    "es-MX"
+                  ),
+              occasion,
+              style,
+              pieces:
+                result.pieces,
+              score:
+                result.score
+            });
+
+            localStorage.setItem(
+              FAV,
+              JSON.stringify(favorites)
+            );
+          }
+
+          button.textContent =
+            "♥ Guardado";
+        };
+      });
   };
 }
 
-/* =========================
+/* ==========================================
+   APRENDIZAJE DE PREFERENCIAS
+========================================== */
+
+function saveFeedback(
+  outfitId,
+  reaction
+) {
+
+  const history =
+    feedback();
+
+  history.push({
+    outfitId,
+    reaction,
+    date: Date.now()
+  });
+
+  localStorage.setItem(
+    FEEDBACK,
+    JSON.stringify(history)
+  );
+}
+
+/* ==========================================
    FAVORITOS
-========================= */
+========================================== */
 
 function favorites() {
-  const favoriteOutfits = favs();
+
+  const favoriteOutfits =
+    favs();
 
   let content = `
     <div class="top">
@@ -622,50 +1279,77 @@ function favorites() {
   `;
 
   if (favoriteOutfits.length) {
-    content += favoriteOutfits
-      .slice()
-      .reverse()
-      .map((favorite) => {
-        const pieces =
-          favorite.pieces || favorite.p || [];
 
-        return `
-          <div class="card">
-            <span class="score">
-              ${favorite.score}% compatible
-            </span>
+    content +=
+      favoriteOutfits
+        .slice()
+        .reverse()
+        .map(favorite => {
 
-            <strong
-              style="display:block;margin-top:10px"
-            >
-              ${esc(favorite.occasion)} ·
-              ${esc(favorite.style)}
-            </strong>
+          const pieces =
+            favorite.pieces ||
+            favorite.p ||
+            [];
 
-            <div class="outfit">
-              ${pieces.map((piece) => `
-                <img
-                  src="${piece.photo}"
-                  alt="${esc(piece.name)}"
-                >
-              `).join("")}
+          return `
+            <div class="card">
+
+              <span class="score">
+                ${rating(
+                  favorite.score
+                )}
+              </span>
+
+              <strong
+                style="
+                  display:block;
+                  margin-top:10px
+                "
+              >
+                ${esc(favorite.occasion)}
+                ·
+                ${esc(favorite.style)}
+              </strong>
+
+              <div class="outfit">
+
+                ${pieces.map(piece => `
+                  <img
+                    src="${piece.photo}"
+                    alt="${esc(piece.name)}"
+                  >
+                `).join("")}
+
+              </div>
+
+              <small class="hint">
+                Guardado el
+                ${favorite.date}
+              </small>
+
             </div>
+          `;
+        })
+        .join("");
 
-            <small class="hint">
-              Guardado el ${favorite.date}
-            </small>
-          </div>
-        `;
-      })
-      .join("");
   } else {
+
     content += `
       <div class="empty">
-        <div style="font-size:42px">♡</div>
-        <h3>Sin favoritos todavía</h3>
+
+        <div style="font-size:42px">
+          ♡
+        </div>
+
+        <h3>
+          Sin favoritos todavía
+        </h3>
+
         <p>
-          Los outfits que guardes aparecerán aquí.
+          Los outfits que guardes
+          aparecerán aquí.
         </p>
+
       </div>
     `;
   }
@@ -673,11 +1357,12 @@ function favorites() {
   layout(content);
 }
 
-/* =========================
-   INICIAR VESTIA
-========================= */
+/* ==========================================
+   RENDER
+========================================== */
 
 function render() {
+
   const pages = {
     home,
     wardrobe,
@@ -685,9 +1370,14 @@ function render() {
     favorites
   };
 
-  const currentPage = pages[page] || home;
-  currentPage();
+  const current =
+    pages[page] || home;
+
+  current();
 }
 
-console.log("Vestia iniciada correctamente");
+console.log(
+  "Vestia v0.2 iniciada correctamente"
+);
+
 render();
