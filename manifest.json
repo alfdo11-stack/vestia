@@ -7,5 +7,13 @@
   "display": "standalone",
   "background_color": "#f7f4ee",
   "theme_color": "#f7f4ee",
-  "lang": "es"
+  "lang": "es",
+  "icons": [
+    {
+      "src": "vestia-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
